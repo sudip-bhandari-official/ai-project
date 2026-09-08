@@ -1,17 +1,12 @@
 """
 Data Preprocessing Module (data_prep.py)
----------------------------------------
-Responsibility:
-- Ingests 'Crop_recommendation.csv' via pandas.read_csv.
-- Extracts features X (N, P, K, temperature, humidity, ph, rainfall) and target y (label).
-- Performs an 80/20 train-test split for model training and validation.
+Loads the agricultural dataset, validates features, and performs train-test split.
 """
 
 import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
-# Feature definitions and recommended environmental bounds
 FEATURE_NAMES = ["N", "P", "K", "temperature", "humidity", "ph", "rainfall"]
 TARGET_COLUMN = "label"
 
@@ -27,52 +22,28 @@ FEATURE_METADATA = {
 
 
 def load_and_preprocess_data(dataset_path: str = "Crop_recommendation_1000.csv", test_size: float = 0.2, random_state: int = 42):
-    """
-    Loads the crop recommendation dataset, validates schema, and performs an 80/20 train-test split.
-    Prefers 'Crop_recommendation_1000.csv' (1,000 crops) and falls back to 'Crop_recommendation.csv' (22 crops).
-
-    Parameters:
-        dataset_path (str): Relative or absolute path to CSV dataset
-        test_size (float): Proportion of dataset to include in test split (default: 0.2)
-        random_state (int): Seed for reproducible random splitting (default: 42)
-
-    Returns:
-        tuple: (X_train, X_test, y_train, y_test) as pandas DataFrames/Series.
-    """
-    # Locate dataset
+    """Loads CSV dataset, validates schema, drops nulls, and returns stratified train-test splits."""
     if not os.path.exists(dataset_path):
         base_dir = os.path.dirname(os.path.abspath(__file__))
-        cand_1000 = os.path.join(base_dir, "Crop_recommendation_1000.csv")
-        cand_22 = os.path.join(base_dir, "Crop_recommendation.csv")
-        if os.path.exists(cand_1000):
-            dataset_path = cand_1000
-        elif os.path.exists(cand_22):
-            dataset_path = cand_22
-        elif os.path.exists("Crop_recommendation.csv"):
-            dataset_path = "Crop_recommendation.csv"
+        alt_path = os.path.join(base_dir, "Crop_recommendation_1000.csv")
+        if os.path.exists(alt_path):
+            dataset_path = alt_path
         else:
-            raise FileNotFoundError(f"Dataset not found at '{dataset_path}' or fallback locations.")
+            raise FileNotFoundError(f"Dataset not found at '{dataset_path}' or '{alt_path}'.")
 
-    # Ingest CSV
     df = pd.read_csv(dataset_path)
 
-    # Validate presence of all expected columns
     expected_cols = FEATURE_NAMES + [TARGET_COLUMN]
     missing_cols = [col for col in expected_cols if col not in df.columns]
     if missing_cols:
         raise ValueError(f"Dataset is missing required columns: {missing_cols}")
 
-    # Check for missing/null values
-    null_counts = df[expected_cols].isnull().sum().sum()
-    if null_counts > 0:
-        # Impute or drop if missing
+    if df[expected_cols].isnull().sum().sum() > 0:
         df = df.dropna(subset=expected_cols)
 
-    # Separate features (X) and target (y)
     X = df[FEATURE_NAMES]
     y = df[TARGET_COLUMN]
 
-    # Perform 80/20 train-test split with stratification across 22 classes
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state, stratify=y
     )
@@ -82,10 +53,5 @@ def load_and_preprocess_data(dataset_path: str = "Crop_recommendation_1000.csv",
 
 if __name__ == "__main__":
     X_train, X_test, y_train, y_test = load_and_preprocess_data()
-    print("Component 1: Data Preprocessing verification")
-    print(f"  Training Features (X_train) Shape: {X_train.shape}")
-    print(f"  Testing Features  (X_test)  Shape: {X_test.shape}")
-    print(f"  Training Labels   (y_train) Shape: {y_train.shape}")
-    print(f"  Testing Labels    (y_test)  Shape: {y_test.shape}")
-    print(f"  Total Unique Classes: {y_train.nunique()}")
-    print("  Preprocessing completed successfully!")
+    print(f"Data Loaded: {len(X_train)} train, {len(X_test)} test across {y_train.nunique()} crops.")
+

@@ -1,23 +1,18 @@
 """
 Smart Crop Recommendation System - Orchestrator & CLI (main.py)
----------------------------------------------------------------
-Responsibility:
-- Ties the pipeline together: Data Ingestion -> Model Fitting -> Multi-Crop Inference.
-- Calculates continuous suitability percentages for all 22 crop classes.
-- Supports both interactive Tkinter desktop GUI (default) and terminal CLI mode (--cli).
+Ties the pipeline together: Data Ingestion -> Model Fitting -> Multi-Crop Inference.
+Supports both interactive Tkinter desktop GUI (default) and terminal CLI mode (--cli).
 """
 
 import sys
 import argparse
 
-# Ensure standard output doesn't crash on Windows terminal encoding
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 from data_prep import load_and_preprocess_data, FEATURE_NAMES, FEATURE_METADATA
 from model_trainer import train_gaussian_nb, predict_crop, format_crop_name
 
-# Practical sample test inputs (Rice/Jute conditions)
 SAMPLE_INPUT = [80.0, 48.0, 40.0, 24.0, 82.0, 6.4, 236.0]
 
 
@@ -46,7 +41,7 @@ def print_prediction_result(result):
     print("-" * 65)
     print("  Related Matchable Crops & Suitability Breakdown:")
     for idx, (crop, pct, badge) in enumerate(result["top_candidates"], 1):
-        bar_len = int(pct / 2.5)  # 40 chars max
+        bar_len = int(pct / 2.5)
         bar = "█" * bar_len
         disp_name = format_crop_name(crop)
         print(f"    {idx}. {disp_name:<24} : {pct:>5.1f}% | {bar:<40} [{badge}]")
@@ -97,15 +92,13 @@ def main():
     )
     args = parser.parse_args()
 
-    # Step 1: Banner
     print_banner()
 
-    # Step 2: Ingest and split data
     print("[1/3] Loading agricultural dataset & preparing train-test split...")
     X_train, X_test, y_train, y_test = load_and_preprocess_data()
-    print(f"      Loaded 2,200 verified samples across 22 crop classes.")
+    total_samples = len(X_train) + len(X_test)
+    print(f"      Loaded {total_samples:,} samples across {y_train.nunique():,} crop classes.")
 
-    # Step 3: Train and evaluate model
     print("\n[2/3] Training Gaussian Naive Bayes Model & Profiling Crops...")
     model, accuracy, report = train_gaussian_nb(
         X_train, X_test, y_train, y_test, verbose=not args.gui_only
